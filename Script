@@ -1,0 +1,1951 @@
+#  Eudriano Costa
+#  R codes used in the article " Costa et al. (2020). Biological aspects of fish species from subsistence fisheries in “Bons Sinais” estuary, Mozambique"
+#  This code was utilized to generate Figure 3, which illustrates the weight-length relationships for fish species from the Bons Sinais estuary, as well as Figure 4, which displays the length-frequency distribution for fish species from the same estuary in Mozambique. Additionally, the code includes the implementation of Student's t-test (ts) to assess if the regression line's parameters, denoted as 'a' and 'b,' significantly differ from zero. Furthermore, it verifies if the parameter 'b' significantly deviates from the isometric value of 3.
+#  Costa, E.F.S., Mocuba, J., Oliveira, D., Teodósio, M.A., Leitão, F. (2020). Biological aspects of fish species from subsistence fisheries in “Bons Sinais” estuary, Mozambique. Regional Studies in Marine Science 39, 101438. doi: https://doi.org/10.1016/j.rsma.2020.101438
+#                                                                                                    #
+######################################################################################################
+####################«»  LW Relationship manuscript  «»  #####################################
+######################################################################################################
+
+setwd("D:/R_Ecoreach/Biofish/LW_Paper")
+list.files()
+LW<-read.csv("Matriz_LW.csv",dec=",",sep=";",header=T,as.is=T)
+str(LW)
+
+LW_data <- LW %>% 
+        mutate(Species = as.factor(Species),
+               Station = as.factor(Station),
+               Season = as.factor(Season),
+               TL = as.numeric(TL),
+               BH = as.numeric(BH),
+               TW = as.numeric(TW)) %>% 
+        select(Species,Station,Season,TL,BH,TW) 
+str(LW_data)
+attach(LW_data)
+summary(LW_data)
+ 
+#                                                                                                    #
+######################################################################################################
+###################################   LW Relationship  + LogW~logT   #################################
+######################################################################################################
+#                                                                                                    #   
+#                                                                                                    #
+###################################      Oreochromis mossambicus  ####################################
+#Packages
+library("tidyverse")# Pacote "tidyverse"
+
+#Link: http://derekogle.com/fishR/examples/oldFishRVignettes/LengthWeight.pdf
+library("FSA")
+library("FSAdata")
+
+
+tiff("LW_Rel_TL_Dist_1.tiff", width = 6, height = 5.5,units = 'in',res=600)
+
+
+op<-par(no.readonly = TRUE)
+par(mfrow = c(4,4))
+par(cex = 0.6)
+par(mar = c(2.8,2.8,1.0,0.5))# outer margin: bottom, left, top and right side
+par(mgp = c(1.5,0.5,0))#axis title, axis labels and axis line default c(3,1,0) 
+par(oma = c(1.5,2.5,1.5,0))  
+layout.show(16) 
+
+#Species subset
+library("tibble")
+LW_data<- as_tibble(LW_data) 
+Ormo_LW<-LW_data %>% filter(TL<=20, Species=="Oreochromis mossambicus")
+str(Ormo_LW) 
+summary(Ormo_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Ormo_LW)
+Ormo_LW1 <- Subset(Ormo_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Ormo_logL <- log(Ormo_LW1$TW)
+Ormo_logW <- log(Ormo_LW1$TL)
+
+Ormo_lm <- lm(Ormo_logL~Ormo_logW)
+fitPlot(Ormo_lm,xlab="",ylab="Log TW (g)",main="Oreochromis mossambicus",yaxt="n",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+
+summary(Ormo_lm)
+
+summary(Ormo_lm)$coefficients
+
+hoCoef(Ormo_lm,2,3)
+confint(Ormo_lm)
+
+# TEST COEFFICIENTES FROM 3
+Ormo_b<-summary(Ormo_lm)$coefficients[2,1] # b- value
+Ormo_b
+Ormo_sb<-summary(Ormo_lm)$coefficients[2,2]# standard error of 'b'
+Ormo_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Ormo_t<-(Ormo_b-3)/Ormo_sb
+Ormo_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+###
+Ormo_len<-length(Ormo_logL)
+Ormo_len
+qt(c(.025, .975), df=(Ormo_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Ormo_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,25),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,cex.main=.85,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Ormo_LW$TL, col = "black", side = 1)
+text(120,0.055,"n = 168",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(1,8,8,1)# Fish body height
+yy = c(0,0,.13,.13)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+OrmoMean<-mean(Ormo_LW$TL, na.rm = TRUE) # Mean size
+OrmoStd<-sqrt(var(Ormo_LW$TL, na.rm = TRUE))# Standard deviation
+OrmoNorm<-curve(dnorm(x, mean=OrmoMean, sd=OrmoStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=20, col="blue",lwd=1, lty=2)#L50
+#abline(v=3.1, col="blue",lwd=1, lty=1)# Mean Body height
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+
+
+#                                                                                                    #
+################################### Hilsa kelee ######################################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Hike_LW<-LW_data %>% filter(TL>=13,Species=="Hilsa kelee")
+str(Hike_LW) 
+summary(Hike_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Hike_LW)
+Hike_LW1 <- subset(Hike_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Hike_logL <- log(Hike_LW1$TW)
+Hike_logW <- log(Hike_LW1$TL)
+
+Hike_lm <- lm(Hike_logL~Hike_logW)
+
+fitPlot(Hike_lm,xlab="",yaxt="n",ylab="",main="Hilsa kelee",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+summary(Hike_lm)
+
+summary(Hike_lm)$coefficients
+
+hoCoef(Hike_lm,2,3)
+confint(Hike_lm)
+##Outra forma https://besjournals.onlinelibrary.wiley.com/doi/epdf/10.1111/j.2041-210X.2011.00153.x
+library(smatr)
+sma(Hike_logL~Hike_logW)
+Hike_sma<-sma(Hike_logL~Hike_logW,robust = T)
+Hike_Testb<-sma(Hike_logL~Hike_logW,slope.test=B)
+Hike_sma
+#plot(Hike_sma, which="residual")
+#plot(Hike_sma, which="qq")
+
+###
+# TEST COEFFICIENTES FROM 3
+Hike_b<-summary(Hike_lm)$coefficients[2,1] # b- value
+Hike_b
+Hike_sb<-summary(Hike_lm)$coefficients[2,2]# standard error of 'b'
+Hike_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Hike_t<-(Hike_b-3)/Hike_sb
+Hike_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+###
+Hike_len<-length(Hike_logL)
+Hike_len
+qt(c(.025, .975), df=(Hike_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Hike_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,20),col="white",cex.main=.85,xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Hike_LW$TL, col = "black", side = 1)
+text(32,0.12,"n = 732",font=1,cex=0.8,adj=0)
+
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.3,4.8,4.8,.3)# Fish body height
+yy = c(0,0,.165,.165)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+
+# Normal curvel
+HikeMean<-mean(Hike_LW$TL, na.rm = TRUE) # Mean size
+HikeStd<-sqrt(var(Hike_LW$TL, na.rm = TRUE))# Standard deviation
+HikeNorm<-curve(dnorm(x, mean=HikeMean, sd=HikeStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=13, col="blue",lwd=1, lty=2)#L50
+#abline(v=1.84, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################     Sardinella albella     #######################################
+#
+
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Saal_LW<-LW_data %>% filter(Species=="Sardinella albella")
+str(Saal_LW) 
+summary(Saal_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Saal_LW)
+Saal_LW1 <- Subset(Saal_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Saal_logL <- log(Saal_LW1$TW)
+Saal_logW <- log(Saal_LW1$TL)
+
+Saal_lm <- lm(Saal_logL~Saal_logW)
+fitPlot(Saal_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Sardinella albella",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+
+summary(Saal_lm)
+
+summary(Saal_lm)$coefficients
+
+hoCoef(Saal_lm,2,3)
+confint(Saal_lm)
+
+# TEST COEFFICIENTES FROM 3
+Saal_b<-summary(Saal_lm)$coefficients[2,1] # b- value
+Saal_b
+Saal_sb<-summary(Saal_lm)$coefficients[2,2]# standard error of 'b'
+Saal_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Saal_t<-(Saal_b-3)/Saal_sb
+Saal_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Saal_len<-length(Saal_logL)
+Saal_len
+qt(c(.025, .975), df=(Saal_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Saal_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,20),col="white",cex.main=.85,xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)#seq(from=-2,to=2,by=0.02)
+axis(1,las=1,cex.axis=1)
+rug(Saal_LW$TL, col = "black", side = 1)
+text(30,0.12,"n = 1021",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.5,4.9,4.9,.5)# Fish body height
+yy = c(0,0,.195,.195)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+SaalMean<-mean(Saal_LW$TL, na.rm = TRUE) # Mean size
+SaalStd<-sqrt(var(Saal_LW$TL, na.rm = TRUE))# Standard deviation
+SaalNorm<-curve(dnorm(x, mean=SaalMean, sd=SaalStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=10, col="blue",lwd=1, lty=2)# L50
+#abline(v=2.27, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################     Stolephorus indicus       ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Stin_LW<-LW_data %>% filter(Species=="Stolephorus indicus")
+str(Stin_LW) 
+summary(Stin_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Stin_LW)
+Stin_LW1 <- Subset(Stin_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Stin_logL <- log(Stin_LW1$TW)
+Stin_logW <- log(Stin_LW1$TL)
+
+Stin_lm <- lm(Stin_logL~Stin_logW)
+fitPlot(Stin_lm,xlab="",yaxt="n",ylab="",main="Stolephorus indicus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Stin_lm)
+
+summary(Stin_lm)$coefficients
+
+hoCoef(Stin_lm,2,3)
+confint(Stin_lm)
+
+# TEST COEFFICIENTES FROM 3
+Stin_b<-summary(Stin_lm)$coefficients[2,1] # b- value
+Stin_b
+Stin_sb<-summary(Stin_lm)$coefficients[2,2]# standard error of 'b'
+Stin_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Stin_t<-(Stin_b-3)/Stin_sb
+Stin_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Stin_len<-length(Stin_logL)
+Stin_len
+qt(c(.025, .975), df=(139-2))#t-value
+
+# »»»»»»» TL_Distribution
+
+hist(Stin_LW$TL, freq=FALSE, breaks=20,main="",xlim=c(0,10),cex.main=.85,col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Stin_LW$TL, col = "black", side = 1)
+text(4.5,0.7,"n = 129",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.3,1.9,1.9,.3)# Fish body height
+yy = c(0,0,.6,.6)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+StinMean<-mean(Stin_LW$TL, na.rm = TRUE) # Mean size
+StinStd<-sqrt(var(Stin_LW$TL, na.rm = TRUE))# Standard deviation
+StinNorm<-curve(dnorm(x, mean=StinMean, sd=StinStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=8.5, col="blue",lwd=1, lty=2)
+#abline(v=0.89, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################        Thryssa setirostris    ####################################
+#Species subset
+
+
+LW_data<- as_tibble(LW_data) 
+Thse_LW<-LW_data %>% filter(Species=="Thryssa setirostris")
+str(Thse_LW) 
+summary(Thse_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Thse_LW)
+Thse_LW1 <- Subset(Thse_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Thse_logL <- log(Thse_LW1$TW)
+Thse_logW <- log(Thse_LW1$TL)
+
+Thse_lm <- lm(Thse_logL~Thse_logW)
+fitPlot(Thse_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Thryssa setirostris",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Thse_lm)
+
+summary(Thse_lm)$coefficients
+
+hoCoef(Thse_lm,2,3)
+confint(Thse_lm)
+
+# TEST COEFFICIENTES FROM 3
+Thse_b<-summary(Thse_lm)$coefficients[2,1] # b- value
+Thse_b
+Thse_sb<-summary(Thse_lm)$coefficients[2,2]# standard error of 'b'
+Thse_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Thse_t<-(Thse_b-3)/Thse_sb
+Thse_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Thse_len<-length(Thse_logL)
+Thse_len
+qt(c(.025, .975), df=(Thse_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Thse_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,20),col="white",cex.main=.85,xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Thse_LW$TL, col = "black", side = 1)
+text(40,0.11,"n = 443",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.6,3.7,3.7,.6)# Fish body height
+yy = c(0,0,.18,.18)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+ThseMean<-mean(Thse_LW$TL, na.rm = TRUE) # Mean size
+ThseStd<-sqrt(var(Thse_LW$TL, na.rm = TRUE))# Standard deviation
+ThseNorm<-curve(dnorm(x, mean=ThseMean, sd=ThseStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=11.8, col="blue",lwd=1, lty=2)# L50 Fishbase
+#abline(v=2.18, col="blue",lwd=1, lty=1)#L médio de captura
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################       Thryssa vitrirostris    ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Thvi_LW<-LW_data %>% filter(Species=="Thryssa vitrirostris")
+str(Thvi_LW) 
+summary(Thvi_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Thvi_LW)
+Thvi_LW1 <- Subset(Thvi_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Thvi_logL <- log(Thvi_LW1$TW)
+Thvi_logW <- log(Thvi_LW1$TL)
+
+Thvi_lm <- lm(Thvi_logL~Thvi_logW)
+fitPlot(Thvi_lm,xlab="",ylab="",yaxt="n",main="Thryssa vitrirostris",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Thvi_lm)
+
+summary(Thvi_lm)$coefficients
+
+hoCoef(Thvi_lm,2,3)
+confint(Thvi_lm)
+
+# TEST COEFFICIENTES FROM 3
+Thvi_b<-summary(Thvi_lm)$coefficients[2,1] # b- value
+Thvi_b
+Thvi_sb<-summary(Thvi_lm)$coefficients[2,2]# standard error of 'b'
+Thvi_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Thvi_t<-(Thvi_b-3)/Thvi_sb
+Thvi_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Thvi_len<-length(Thvi_logL)
+Thvi_len
+qt(c(.025, .975), df=(Thvi_len-2))#t
+
+# »»»»»»» TL_Distribution
+
+hist(Thvi_LW$TL, freq=FALSE, breaks=20,main="",xlim=c(0,30),col="white",cex.main=.85,xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Thvi_LW$TL, col = "black", side = 1)
+text(38,0.15,"n = 3305",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.3,4.7,4.7,.3)# Fish body height
+yy = c(0,0,.17,.17)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+ThviMean<-mean(Thvi_LW$TL, na.rm = TRUE) # Mean size
+ThviStd<-sqrt(var(Thvi_LW$TL, na.rm = TRUE))# Standard deviation
+ThviNorm<-curve(dnorm(x, mean=ThviMean, sd=ThviStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=13, col="blue",lwd=1, lty=2)
+#abline(v=2.06, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+
+#                                                                                                    #
+###################################     Pomadasys kaakan     ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Poka_LW<-LW_data %>% filter(Species=="Pomadasys kaakan")
+str(Poka_LW) 
+summary(Poka_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Poka_LW)
+Poka_LW1 <- Subset(Poka_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Poka_logL <- log(Poka_LW1$TW)
+Poka_logW <- log(Poka_LW1$TL)
+
+Poka_lm <- lm(Poka_logL~Poka_logW)
+fitPlot(Poka_lm,xlab="Log TL (cm)",yaxt="n",ylab="Log TW (g)",main="Pomadasys kaakan",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Poka_lm)
+
+summary(Poka_lm)$coefficients
+
+hoCoef(Poka_lm,2,3)
+confint(Poka_lm)
+
+# TEST COEFFICIENTES FROM 3
+Poka_b<-summary(Poka_lm)$coefficients[2,1] # b- value
+Poka_b
+Poka_sb<-summary(Poka_lm)$coefficients[2,2]# standard error of 'b'
+Poka_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Poka_t<-(Poka_b-3)/Poka_sb
+Poka_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Poka_len<-length(Poka_logL)
+Poka_len
+qt(c(.025, .975), df=(Poka_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Poka_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,50),col="white",cex.main=.85,xaxt="n",xlab="TL (cm)", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Poka_LW$TL, col = "black", side = 1)
+text(65,0.1,"n = 618",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.4,5.8,5.8,.4)# Fish body height
+yy = c(0,0,.22,.22)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+PokaMean<-mean(Poka_LW$TL, na.rm = TRUE) # Mean size
+PokaStd<-sqrt(var(Poka_LW$TL, na.rm = TRUE))# Standard deviation
+PokaNorm<-curve(dnorm(x, mean=PokaMean, sd=PokaStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=48, col="blue",lwd=1, lty=2)
+#abline(v=2.48, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################      Mugil cephalus    ###########################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Muce_LW<-LW_data %>% filter(Species=="Mugil cephalus")
+str(Muce_LW) 
+summary(Muce_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Muce_LW)
+Muce_LW1 <- Subset(Muce_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Muce_logL <- log(Muce_LW1$TW)
+Muce_logW <- log(Muce_LW1$TL)
+
+Muce_lm <- lm(Muce_logL~Muce_logW)
+fitPlot(Muce_lm,xlab="Log TL (cm)",yaxt="n",ylab="",main="Mugil cephalus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Muce_lm)
+
+summary(Muce_lm)$coefficients
+
+hoCoef(Muce_lm,2,3)
+confint(Muce_lm)
+
+# TEST COEFFICIENTES FROM 3
+Muce_b<-summary(Muce_lm)$coefficients[2,1] # b- value
+Muce_b
+Muce_sb<-summary(Muce_lm)$coefficients[2,2]# standard error of 'b'
+Muce_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Muce_t<-(Muce_b-3)/Muce_sb
+Muce_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+###
+Muce_len<-length(Muce_logL)
+Muce_len
+qt(c(.025, .975), df=(Muce_len-2))#t-test table, significant when less than estimated value
+
+
+# »»»»»»» TL_Distribution
+
+hist(Muce_LW$TL, freq=FALSE, breaks=20,main="Mugil cephalus",xlim=c(0,35),cex.main=.85,col="white",xaxt="n",xlab="TL (cm)", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Muce_LW$TL, col = "black", side = 1)
+text(48,0.11,"n = 779",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.7,4.6,4.6,.7)# Fish body height
+yy = c(0,0,.20,.20)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+MuceMean<-mean(Muce_LW$TL, na.rm = TRUE) # Mean size
+MuceStd<-sqrt(var(Muce_LW$TL, na.rm = TRUE))# Standard deviation
+MuceNorm<-curve(dnorm(x, mean=MuceMean, sd=MuceStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=35, col="blue",lwd=1, lty=2)
+#abline(v=2.36, col="blue",lwd=1, lty=1)#L médio de captura
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+
+legend(13.5,0.20, legend=c("L50", "Mesh size"),
+       col=c("blue","blue","blue"), lty=c(2,1), box.lwd=0.1, cex=0.6)
+
+dev.off()
+
+#                                                                                                    #
+###################################     Pellona ditchela          ####################################
+#Species subset
+
+tiff("LW_Rel_TL_Dist_2.tiff", width = 6, height = 5.5,units = 'in',res=600)
+
+op<-par(no.readonly = TRUE)
+par(mfrow = c(4,4))
+par(cex = 0.6)
+par(mar = c(2.8,2.8,1.0,0.5))#outer margin: bottom, left, top and right side
+par(mgp = c(1.5,0.5,0))#axis title, axis labels and axis line default c(3,1,0) 
+par(oma = c(1.5,2.5,1.5,0))  
+layout.show(16) 
+
+
+LW_data<- as_tibble(LW_data) 
+Pedi_LW<-LW_data %>% filter(Species=="Pellona ditchela")
+str(Pedi_LW) 
+summary(Pedi_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Pedi_LW)
+Pedi_LW1 <- Subset(Pedi_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Pedi_logL <- log(Pedi_LW1$TW)
+Pedi_logW <- log(Pedi_LW1$TL)
+
+Pedi_lm <- lm(Pedi_logL~Pedi_logW)
+fitPlot(Pedi_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Pellona ditchela",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,seq(from = 0, to= 4, by=1),  tck=-.025,cex.axis=1)
+summary(Pedi_lm)
+
+summary(Pedi_lm)$coefficients
+
+hoCoef(Pedi_lm,2,3)
+confint(Pedi_lm)
+
+# TEST COEFFICIENTES FROM 3
+Pedi_b<-summary(Pedi_lm)$coefficients[2,1] # b- value
+Pedi_b
+Pedi_sb<-summary(Pedi_lm)$coefficients[2,2]# standard error of 'b'
+Pedi_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Pedi_t<-(Pedi_b-3)/Pedi_sb
+Pedi_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Pedi_len<-length(Pedi_logL)
+Pedi_len
+qt(c(.025, .975), df=(Pedi_len-2))#t-test table, significant when less than estimated value
+
+
+# »»»»»»» TL_Distribution
+hist(Pedi_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,20),cex.main=.85,col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Pedi_LW$TL, col = "black", side = 1)
+text(50,0.08,"n = 1075",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.6,4.7,4.7,.6)# Fish body height
+yy = c(0,0,.19,.19)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+PediMean<-mean(Pedi_LW$TL, na.rm = TRUE) # Mean size
+PediStd<-sqrt(var(Pedi_LW$TL, na.rm = TRUE))# Standard deviation
+PediNorm<-curve(dnorm(x, mean=PediMean, sd=PediStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=14, col="blue",lwd=1, lty=2)
+#abline(v=2.61, col="blue",lwd=1, lty=1)#L médio de captura
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+################################### Johnius amblycephalus  ###########################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Joam_LW<-LW_data %>% filter(Species=="Johnius amblycephalus")
+str(Joam_LW) 
+summary(Joam_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Joam_LW)
+Joam_LW1 <- Subset(Joam_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+Joam_logL <- log(Joam_LW1$TW)
+Joam_logW <- log(Joam_LW1$TL)
+
+Joam_lm <- lm(Joam_logL~Joam_logW)
+fitPlot(Joam_lm,xlab="",yaxt="n",ylab="",main="Johnius amblycephalus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Joam_lm)
+
+summary(Joam_lm)$coefficients
+
+hoCoef(Joam_lm,2,3)
+confint(Joam_lm)
+
+# TEST COEFFICIENTES FROM 3
+Joam_b<-summary(Joam_lm)$coefficients[2,1] # b- value
+Joam_b
+Joam_sb<-summary(Joam_lm)$coefficients[2,2]# standard error of 'b'
+Joam_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Joam_t<-(Joam_b-3)/Joam_sb
+Joam_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+###
+Joam_len<-length(Hike_logL)
+Joam_len
+qt(c(.025, .975), df=(Joam_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Joam_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,20),cex.main=.85,col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Joam_LW$TL, col = "black", side = 1)
+text(50,0.08,"n = 47",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.3,4.9,4.9,.3)# Fish body height
+yy = c(0,0,.35,.35)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+JoamMean<-mean(Joam_LW$TL, na.rm = TRUE) # Mean size
+JoamStd<-sqrt(var(Joam_LW$TL, na.rm = TRUE))# Standard deviation
+JoamNorm<-curve(dnorm(x, mean=JoamMean, sd=JoamStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=15.7, col="blue",lwd=1, lty=2)
+#abline(v=2.26, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################  Johnius dussumieri    ###########################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Jodu_LW<-LW_data %>% filter(Species=="Johnius dussumieri ")
+str(Jodu_LW) 
+summary(Jodu_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Jodu_LW)
+Jodu_LW1 <- Subset(Jodu_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Jodu_logL <- log(Jodu_LW1$TW)
+Jodu_logW <- log(Jodu_LW1$TL)
+
+Jodu_lm <- lm(Jodu_logL~Jodu_logW)
+fitPlot(Jodu_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Johnius dussumieri",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Jodu_lm)
+
+summary(Jodu_lm)$coefficients
+
+hoCoef(Jodu_lm,2,3)
+confint(Jodu_lm)
+
+# TEST COEFFICIENTES FROM 3
+Jodu_b<-summary(Jodu_lm)$coefficients[2,1] # b- value
+Jodu_b
+Jodu_sb<-summary(Jodu_lm)$coefficients[2,2]# standard error of 'b'
+Jodu_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Jodu_t<-(Jodu_b-3)/Jodu_sb
+Jodu_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+###
+Jodu_len<-length(Jodu_logL)
+Jodu_len
+qt(c(.025, .975), df=(Jodu_len-2))#t-test table, significant when less than estimated value
+
+
+# »»»»»»» TL_Distribution
+hist(Jodu_LW$TL, freq=FALSE, breaks=10,main="",ylim=c(0,0.13),xlim=c(0,30),cex.main=.85,col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Jodu_LW$TL, col = "black", side = 1)
+text(60,0.09,"n = 1290",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.6,6,6,.6)# Fish body height
+yy = c(0,0,.14,.14)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+JoduMean<-mean(Jodu_LW$TL, na.rm = TRUE) # Mean size
+JoduStd<-sqrt(var(Jodu_LW$TL, na.rm = TRUE))# Standard deviation
+JoduNorm<-curve(dnorm(x, mean=JoduMean, sd=JoduStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=12, col="blue",lwd=1, lty=2)
+#abline(v=2.52, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+#                                                                                                    #
+###################################        Otolithes ruber        ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Otru_LW<-LW_data %>% filter(Species=="Otolithes ruber")
+str(Otru_LW) 
+summary(Otru_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Otru_LW)
+Otru_LW1 <- Subset(Otru_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Otru_logL <- log(Otru_LW1$TW)
+Otru_logW <- log(Otru_LW1$TL)
+
+Otru_lm <- lm(Otru_logL~Otru_logW)
+fitPlot(Otru_lm,xlab="Log TL (cm)",ylab="",main="Otolithes ruber",font.main=3,cex.main=.85,lwd=1)
+summary(Otru_lm)
+
+summary(Otru_lm)$coefficients
+
+hoCoef(Otru_lm,2,3)
+confint(Otru_lm)
+
+# TEST COEFFICIENTES FROM 3
+Otru_b<-summary(Otru_lm)$coefficients[2,1] # b- value
+Otru_b
+Otru_sb<-summary(Otru_lm)$coefficients[2,2]# standard error of 'b'
+Otru_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Otru_t<-(Otru_b-3)/Otru_sb
+Otru_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Otru_len<-length(Otru_logL)
+Otru_len
+qt(c(.025, .975), df=(Otru_len-2))#t-test table, significant when less than estimated value
+
+# »»»»»»» TL_Distribution
+
+hist(Otru_LW$TL, freq=FALSE, breaks=20,main="",xlim=c(0,40),cex.main=.85,col="white",xaxt="n",xlab="TL (cm)", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Otru_LW$TL, col = "black", side = 1)
+text(320,0.017,"n = 586",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.4,8.5,8.5,.4)# Fish body height
+yy = c(0,0,.07,.07)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+OtruMean<-mean(Otru_LW$TL, na.rm = TRUE) # Mean size
+OtruStd<-sqrt(var(Otru_LW$TL, na.rm = TRUE))# Standard deviation
+OtruNorm<-curve(dnorm(x, mean=OtruMean, sd=OtruStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=28, col="blue",lwd=1, lty=2)
+#abline(v=3.16, col="blue",lwd=1, lty=1)#
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+
+#                                                                                                    #
+###################################       Trichiurus lepturus     ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Trle_LW<-LW_data %>% filter(Species=="Trichiurus lepturus")
+str(Trle_LW) 
+summary(Trle_LW)
+
+# »»»»»»» LW_Relationship
+
+str(Trle_LW)
+Trle_LW1 <- Subset(Trle_LW,!is.na(TW) & !is.na(TL)) # needed to be "cleaned" by removing
+#all records where mesures of either length or weight were missing
+
+Trle_logL <- log(Trle_LW1$TW)
+Trle_logW <- log(Trle_LW1$TL)
+
+Trle_lm <- lm(Trle_logL~Trle_logW)
+fitPlot(Trle_lm,xlab="Log TL (cm)",yaxt="n",ylab="Log TW (g)",main="Trichiurus lepturus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+summary(Trle_lm)
+
+summary(Trle_lm)$coefficients
+
+hoCoef(Trle_lm,2,3)
+confint(Trle_lm)
+
+# TEST COEFFICIENTES FROM 3
+Trle_b<-summary(Trle_lm)$coefficients[2,1] # b- value
+Trle_b
+Trle_sb<-summary(Trle_lm)$coefficients[2,2]# standard error of 'b'
+Trle_sb
+# t-test ts = (b-3) / Sb (Sokal and Rohlf 1987)
+Trle_t<-(Trle_b-3)/Trle_sb
+Trle_t # t-result https://www.socscistatistics.com/pvalues/tdistribution.aspx
+
+Trle_len<-length(Trle_logL)
+Trle_len
+qt(c(.025, .975), df=(Trle_len-2))
+
+
+# »»»»»»» TL_Distribution
+hist(Trle_LW$TL, freq=FALSE, breaks=10,main="",xlim=c(0,90),cex.main=.85,col="white",xaxt="n",xlab="TL (cm)", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Trle_LW$TL, col = "black", side = 1)
+text(200,0.025,"n = 461",font=1,cex=0.8,adj=0)
+## Draw a polygon defining an area on the graph -- This is a red square
+xx = c(.4,4.5,4.5,.4)# Fish body height
+yy = c(0,0,.05,.05)
+polygon(xx,yy, density=40, col="black", border = NA,lwd=0.2,lty=1)#density=30 lines # When density=0, col refers to the line colour
+# Normal curvel
+TrleMean<-mean(Trle_LW$TL, na.rm = TRUE) # Mean size
+TrleStd<-sqrt(var(Trle_LW$TL, na.rm = TRUE))# Standard deviation
+TrleNorm<-curve(dnorm(x, mean=TrleMean, sd=TrleStd), 
+                col="red", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=53, col="blue",lwd=1, lty=2)#L50
+#abline(v=1.6, col="blue",lwd=1, lty=1)# L medio de captura
+abline(v=3.8, col="blue",lwd=1, lty=1)#Law 3/90 of 26 September 1990= 3.8 cm beach seine
+
+legend(40,0.0487, legend=c("L50","Mesh size"),
+       col=c("blue","blue","blue"), lty=c(2,1), box.lwd=0.1, cex=0.6)
+
+
+
+#mtext(text="log Total Length (mm)",side=1,line=0,outer=TRUE,cex=0.8)
+#mtext(text="log Weight (g)",side=2,line=0,outer=TRUE,cex=0.8)
+
+
+dev.off()
+
+
+
+
+
+
+
+
+
+
+#                                                                                                    #
+######################################################################################################
+###################################    RESIDUAL PLOTS  + LogW~logT   #################################
+######################################################################################################
+#     
+#Packages
+library(smatr)
+tiff("Residual Plots.tiff", width = 6, height = 5.5,units = 'in',res=600)
+
+op<-par(no.readonly = TRUE)
+par(mfrow = c(4,4))
+par(mar = c(2.5,2.5,1.0,0.5))#outer margin: bottom, left, top and right side
+par(mgp = c(1.5,0.5,0))#axis title, axis labels and axis line default c(3,1,0) 
+par(oma = c(1.5,2.5,1.5,0))  
+layout.show(16) 
+
+#                                                                                                    #
+###################################      Oreochromis mossambicus  ####################################
+#
+sma(Ormo_logL~Ormo_logW)
+Ormo_sma<-sma(Ormo_logL~Ormo_logW,robust = T)
+Ormo_Testb<-sma(Ormo_logL~Ormo_logW,slope.test=B)
+Ormo_sma
+plot(Ormo_sma, which="residual")
+#plot(Ormo_sma, which="qq")
+
+#                                                                                                    #
+################################### Hilsa kelee ######################################################
+#
+sma(Hike_logL~Hike_logW)
+Hike_sma<-sma(Hike_logL~Hike_logW,robust = T)
+Hike_Testb<-sma(Hike_logL~Hike_logW,slope.test=B)
+Hike_sma
+plot(Hike_sma, which="residual")
+#plot(Hike_sma, which="qq")
+
+#                                                                                                    #
+###################################     Sardinella albella     #######################################
+#
+sma(Saal_logL~Saal_logW)
+Saal_sma<-sma(Saal_logL~Saal_logW,robust = T)
+Saal_Testb<-sma(Saal_logL~Saal_logW,slope.test=B)
+Saal_sma
+plot(Saal_sma, which="residual")
+#plot(Saal_sma, which="qq")
+
+#                                                                                                    #
+###################################     Stolephorus indicus       ####################################
+#
+sma(Stin_logL~Stin_logW)
+Stin_sma<-sma(Stin_logL~Stin_logW,robust = T)
+Stin_Testb<-sma(Stin_logL~Stin_logW,slope.test=B)
+Stin_sma
+plot(Stin_sma, which="residual")
+#plot(Stin_sma, which="qq")
+
+#                                                                                                    #
+###################################        Thryssa setirostris    ####################################
+#
+sma(Thse_logL~Thse_logW)
+Thse_sma<-sma(Thse_logL~Thse_logW,robust = T)
+Thse_Testb<-sma(Thse_logL~Thse_logW,slope.test=B)
+Thse_sma
+plot(Thse_sma, which="residual")
+#plot(Thse_sma, which="qq")
+
+#                                                                                                    #
+###################################       Thryssa vitrirostris    ####################################
+#
+sma(Thvi_logL~Thvi_logW)
+Thvi_sma<-sma(Thvi_logL~Thvi_logW,robust = T)
+Thvi_Testb<-sma(Thvi_logL~Thvi_logW,slope.test=B)
+Thvi_sma
+plot(Thvi_sma, which="residual")
+#plot(Thvi_sma, which="qq")
+
+
+#                                                                                                    #
+###################################     Pomadasys kaakan     ####################################
+#
+sma(Poka_logL~Poka_logW)
+Poka_sma<-sma(Poka_logL~Poka_logW,robust = T)
+Poka_Testb<-sma(Poka_logL~Poka_logW,slope.test=B)
+Poka_sma
+plot(Poka_sma, which="residual")
+#plot(Poka_sma, which="qq")
+
+#                                                                                                    #
+###################################      Mugil cephalus    ###########################################
+#
+sma(Muce_logL~Muce_logW)
+Muce_sma<-sma(Muce_logL~Muce_logW,robust = T)
+Muce_Testb<-sma(Muce_logL~Muce_logW,slope.test=B)
+Muce_sma
+plot(Muce_sma, which="residual")
+Wplot(Muce_sma, which="qq")
+
+#                                                                                                    #
+###################################     Pellona ditchela          ####################################
+#
+sma(Pedi_logL~Pedi_logW)
+Pedi_sma<-sma(Pedi_logL~Pedi_logW,robust = T)
+Pedi_Testb<-sma(Pedi_logL~Pedi_logW,slope.test=B)
+Pedi_sma
+plot(Pedi_sma, which="residual")
+#plot(Pedi_sma, which="qq")
+
+#                                                                                                    #
+################################### Johnius amblycephalus  ###########################################
+#
+sma(Joam_logL~Joam_logW)
+Joam_sma<-sma(Joam_logL~Joam_logW,robust = T)
+Joam_Testb<-sma(Joam_logL~Hike_logW,slope.test=B)
+Joam_sma
+plot(Joam_sma, which="residual")
+#plot(Joam_sma, which="qq")
+
+#                                                                                                    #
+###################################  Johnius dussumieri    ###########################################
+#
+sma(Jodu_logL~Jodu_logW)
+Jodu_sma<-sma(Jodu_logL~Jodu_logW,robust = T)
+Jodu_Testb<-sma(Jodu_logL~Hike_logW,slope.test=B)
+Jodu_sma
+plot(Jodu_sma, which="residual")
+#plot(Jodu_sma, which="qq")
+#                                                                                                    #
+###################################        Otolithes ruber        ####################################
+#
+sma(Otru_logL~Otru_logW)
+Otru_sma<-sma(Otru_logL~Otru_logW,robust = T)
+Otru_Testb<-sma(Otru_logL~Hike_logW,slope.test=B)
+Otru_sma
+plot(Otru_sma, which="residual")
+#plot(Otru_sma, which="qq")
+
+#                                                                                                    #
+###################################       Trichiurus lepturus     ####################################
+#
+sma(Trle_logL~Trle_logW)
+Trle_sma<-sma(Trle_logL~Trle_logW,robust = T)
+Trle_Testb<-sma(Trle_logL~Trle_logW,slope.test=B)
+Trle_sma
+plot(Trle_sma, which="residual")
+#plot(Trle_sma, which="qq")
+
+dev.off()
+
+##############################                     OK           ######################################
+
+######################################################################################################
+#                                                                                                    #
+######################################################################################################
+####################«» Size distribution - LW Relationship manuscript  «»  ###########################
+######################################################################################################
+#                                                                                                    #
+
+rm(list = ls()) #executar antes de iniciar as análises
+#
+setwd("D:/R_Ecoreach/Biofish/LW_Paper")
+list.files()
+LW<-read.csv("Matriz_LW.csv",dec=",",sep=";",header=T,as.is=T)
+str(LW)
+
+Registrador<-as.character(LW$Registrador)
+Family<-as.character(LW$Family)
+Species<-as.factor(LW$Species)
+Fishing_gear<-as.character(LW$Fishing_gear)
+Month<-as.character(LW$Month)
+Year<-as.character(LW$Year)
+TW<-as.numeric(LW$WT)
+TL<-as.numeric(LW$TL)
+LW_data <- data.frame(Registrador,Family,Species,Fishing_gear,Month,Year,TW,TL,stringsAsFactors = FALSE)
+str(LW_data)
+attach(LW_data)
+summary(LW_data)
+
+#Packages
+if(!require("tidyverse")) install.packages("tidyverse")# Pacote "tidyverse"
+
+#Link: http://derekogle.com/fishR/examples/oldFishRVignettes/LengthWeight.pdf
+if(!require("FSA")) install.packages("FSA")
+if(!require("FSAdata")) install.packages("FSAdata")
+
+tiff("Size distribution.tiff", width = 6, height = 5.5,units = 'in',res=600)
+
+op<-par(no.readonly = TRUE)
+par(mfrow = c(4,4))
+par(mar = c(2.5,2.5,1.0,0.5))#outer margin: bottom, left, top and right side
+par(mgp = c(1.5,0.5,0))#axis title, axis labels and axis line default c(3,1,0) 
+par(oma = c(1.5,2.5,1.5,0))  
+layout.show(16) 
+
+###################### SIZE DISTRIBUTION BY SPECIES AND TEST FOR NORMALITY ###########################
+#                                                                                                    #
+###################################      Oreochromis mossambicus  ####################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Ormo_LW<-LW_data %>% filter(Species=="Oreochromis mossambicus")
+str(Ormo_LW) 
+summary(Ormo_LW)
+
+# »»»»»»» TL_Distribution
+hist(Ormo_LW$TL, freq=FALSE, breaks=10,main="Oreochromis mossambicus",xlim=c(0,25),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Ormo_LW$TL, col = "black", side = 1)
+text(120,0.055,"n = 168",font=1,cex=0.8,adj=0)
+# Normal curvel
+OrmoMean<-mean(Ormo_LW$TL, na.rm = TRUE) # Mean size
+OrmoStd<-sqrt(var(Ormo_LW$TL, na.rm = TRUE))# Standard deviation
+OrmoNorm<-curve(dnorm(x, mean=OrmoMean, sd=OrmoStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=19.6, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+################################### Hilsa kelee ######################################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Hike_LW<-LW_data %>% filter(Species=="Hilsa kelee")
+str(Hike_LW) 
+summary(Hike_LW)
+
+# »»»»»»» TL_Distribution
+hist(Hike_LW$TL, freq=FALSE, breaks=10,main="Hilsa kelee",xlim=c(0,20),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Hike_LW$TL, col = "black", side = 1)
+text(32,0.12,"n = 732",font=1,cex=0.8,adj=0)
+# Normal curvel
+HikeMean<-mean(Hike_LW$TL, na.rm = TRUE) # Mean size
+HikeStd<-sqrt(var(Hike_LW$TL, na.rm = TRUE))# Standard deviation
+HikeNorm<-curve(dnorm(x, mean=HikeMean, sd=HikeStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=13.1, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################     Sardinella albella     #######################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Saal_LW<-LW_data %>% filter(Species=="Sardinella albella")
+str(Saal_LW) 
+summary(Saal_LW)
+
+# »»»»»»» TL_Distribution
+hist(Saal_LW$TL, freq=FALSE, breaks=10,main="Sardinella albella",xlim=c(0,20),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Saal_LW$TL, col = "black", side = 1)
+text(30,0.12,"n = 1021",font=1,cex=0.8,adj=0)
+# Normal curvel
+SaalMean<-mean(Saal_LW$TL, na.rm = TRUE) # Mean size
+SaalStd<-sqrt(var(Saal_LW$TL, na.rm = TRUE))# Standard deviation
+SaalNorm<-curve(dnorm(x, mean=SaalMean, sd=SaalStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=8.4, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################     Stolephorus indicus       ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Stin_LW<-LW_data %>% filter(Species=="Stolephorus indicus")
+str(Stin_LW) 
+summary(Stin_LW)
+# »»»»»»» TL_Distribution
+
+hist(Stin_LW$TL, freq=FALSE, breaks=20,main="Stolephorus indicus",xlim=c(0,10),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Stin_LW$TL, col = "black", side = 1)
+text(4.5,0.7,"n = 129",font=1,cex=0.8,adj=0)
+# Normal curvel
+StinMean<-mean(Stin_LW$TL, na.rm = TRUE) # Mean size
+StinStd<-sqrt(var(Stin_LW$TL, na.rm = TRUE))# Standard deviation
+StinNorm<-curve(dnorm(x, mean=StinMean, sd=StinStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=10.2, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################        Thryssa setirostris    ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Thse_LW<-LW_data %>% filter(Species=="Thryssa setirostris")
+str(Thse_LW) 
+summary(Thse_LW)
+
+# »»»»»»» TL_Distribution
+hist(Thse_LW$TL, freq=FALSE, breaks=10,main="Thryssa setirostris",xlim=c(0,20),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Thse_LW$TL, col = "black", side = 1)
+text(40,0.11,"n = 443",font=1,cex=0.8,adj=0)
+# Normal curvel
+ThseMean<-mean(Thse_LW$TL, na.rm = TRUE) # Mean size
+ThseStd<-sqrt(var(Thse_LW$TL, na.rm = TRUE))# Standard deviation
+ThseNorm<-curve(dnorm(x, mean=ThseMean, sd=ThseStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=11.8, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################       Thryssa vitrirostris    ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Thvi_LW<-LW_data %>% filter(Species=="Thryssa vitrirostris")
+str(Thvi_LW) 
+summary(Thvi_LW)
+
+# »»»»»»» TL_Distribution
+hist(Thvi_LW$TL, freq=FALSE, breaks=20,main="Thryssa vitrirostris",xlim=c(0,30),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Thvi_LW$TL, col = "black", side = 1)
+text(38,0.15,"n = 3305",font=1,cex=0.8,adj=0)
+# Normal curvel
+ThviMean<-mean(Thvi_LW$TL, na.rm = TRUE) # Mean size
+ThviStd<-sqrt(var(Thvi_LW$TL, na.rm = TRUE))# Standard deviation
+ThviNorm<-curve(dnorm(x, mean=ThviMean, sd=ThviStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=15.5, col="black",lwd=1, lty=2)# Normal curve
+
+#                                                                                                    #
+###################################     Pomadasys kaakan     ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Poka_LW<-LW_data %>% filter(Species=="Pomadasys kaakan")
+str(Poka_LW) 
+summary(Poka_LW)
+
+# »»»»»»» TL_Distribution
+hist(Poka_LW$TL, freq=FALSE, breaks=10,main="Pomadasys kaakan",xlim=c(0,35),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Poka_LW$TL, col = "black", side = 1)
+text(65,0.1,"n = 618",font=1,cex=0.8,adj=0)
+# Normal curvel
+PokaMean<-mean(Poka_LW$TL, na.rm = TRUE) # Mean size
+PokaStd<-sqrt(var(Poka_LW$TL, na.rm = TRUE))# Standard deviation
+PokaNorm<-curve(dnorm(x, mean=PokaMean, sd=PokaStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=34.1, col="black",lwd=1, lty=2)# Normal curve
+
+#                                                                                                    #
+###################################      Mugil cephalus    ###########################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Muce_LW<-LW_data %>% filter(Species=="Mugil cephalus")
+str(Muce_LW) 
+summary(Muce_LW)
+
+# »»»»»»» TL_Distribution
+hist(Muce_LW$TL, freq=FALSE, breaks=20,main="Mugil cephalus",xlim=c(0,35),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Muce_LW$TL, col = "black", side = 1)
+text(48,0.11,"n = 779",font=1,cex=0.8,adj=0)
+# Normal curvel
+MuceMean<-mean(Muce_LW$TL, na.rm = TRUE) # Mean size
+MuceStd<-sqrt(var(Muce_LW$TL, na.rm = TRUE))# Standard deviation
+MuceNorm<-curve(dnorm(x, mean=MuceMean, sd=MuceStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=32.5, col="black",lwd=1, lty=2)# Normal curve
+
+#                                                                                                    #
+###################################     Pellona ditchela          ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Pedi_LW<-LW_data %>% filter(Species=="Pellona ditchela")
+str(Pedi_LW) 
+summary(Pedi_LW)
+
+# »»»»»»» TL_Distribution
+hist(Pedi_LW$TL, freq=FALSE, breaks=10,main="Pellona ditchela",xlim=c(0,20),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Pedi_LW$TL, col = "black", side = 1)
+text(50,0.08,"n = 1075",font=1,cex=0.8,adj=0)
+# Normal curvel
+PediMean<-mean(Pedi_LW$TL, na.rm = TRUE) # Mean size
+PediStd<-sqrt(var(Pedi_LW$TL, na.rm = TRUE))# Standard deviation
+PediNorm<-curve(dnorm(x, mean=PediMean, sd=PediStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=13.3, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+################################### Johnius amblycephalus  ###########################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Joam_LW<-LW_data %>% filter(Species=="Johnius amblycephalus")
+str(Joam_LW) 
+summary(Joam_LW)
+
+# »»»»»»» TL_Distribution
+hist(Joam_LW$TL, freq=FALSE, breaks=10,main="Johnius amblycephalus",xlim=c(0,20),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Joam_LW$TL, col = "black", side = 1)
+text(50,0.08,"n = 47",font=1,cex=0.8,adj=0)
+# Normal curvel
+JoamMean<-mean(Joam_LW$TL, na.rm = TRUE) # Mean size
+JoamStd<-sqrt(var(Joam_LW$TL, na.rm = TRUE))# Standard deviation
+JoamNorm<-curve(dnorm(x, mean=JoamMean, sd=JoamStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=15.7, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################  Johnius dussumieri    ###########################################
+#Species subset
+LW_data<- as_tibble(LW_data) 
+Jodu_LW<-LW_data %>% filter(Species=="Johnius dussumieri ")
+str(Jodu_LW) 
+summary(Jodu_LW)
+
+# »»»»»»» TL_Distribution
+hist(Jodu_LW$TL, freq=FALSE, breaks=10,main="Johnius dussumieri",xlim=c(0,30),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Jodu_LW$TL, col = "black", side = 1)
+text(60,0.09,"n = 1290",font=1,cex=0.8,adj=0)
+# Normal curvel
+JoduMean<-mean(Jodu_LW$TL, na.rm = TRUE) # Mean size
+JoduStd<-sqrt(var(Jodu_LW$TL, na.rm = TRUE))# Standard deviation
+JoduNorm<-curve(dnorm(x, mean=JoduMean, sd=JoduStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=16.2, col="black",lwd=1, lty=2)
+
+#                                                                                                    #
+###################################        Otolithes ruber        ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Otru_LW<-LW_data %>% filter(Species=="Otolithes ruber")
+str(Otru_LW) 
+summary(Otru_LW)
+
+# »»»»»»» TL_Distribution
+hist(Otru_LW$TL, freq=FALSE, breaks=20,main="Otolithes ruber",xlim=c(0,40),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Otru_LW$TL, col = "black", side = 1)
+text(320,0.017,"n = 586",font=1,cex=0.8,adj=0)
+# Normal curvel
+OtruMean<-mean(Otru_LW$TL, na.rm = TRUE) # Mean size
+OtruStd<-sqrt(var(Otru_LW$TL, na.rm = TRUE))# Standard deviation
+OtruNorm<-curve(dnorm(x, mean=OtruMean, sd=OtruStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=26, col="black",lwd=1, lty=2)# Normal curve
+
+#                                                                                                    #
+###################################       Trichiurus lepturus     ####################################
+#Species subset
+
+LW_data<- as_tibble(LW_data) 
+Trle_LW<-LW_data %>% filter(Species=="Trichiurus lepturus")
+str(Trle_LW) 
+summary(Trle_LW)
+
+# »»»»»»» TL_Distribution
+hist(Trle_LW$TL, freq=FALSE, breaks=10,main="Trichiurus lepturus",xlim=c(0,90),col="white",xaxt="n",xlab="", 
+     ylab="",yaxt="n",cex.axis=1,font.main=3,las=2,cex.main=.85)#,"seq(from=0,to=1,by=1)" + remoção do "freq=FALSE"
+axis(2,las=2,tck=-.025,cex.axis=1)
+axis(1,las=1,cex.axis=1)#,seq(from=10,to=80,by=2)
+rug(Trle_LW$TL, col = "black", side = 1)
+text(200,0.025,"n = 461",font=1,cex=0.8,adj=0)
+# Normal curvel
+TrleMean<-mean(Trle_LW$TL, na.rm = TRUE) # Mean size
+TrleStd<-sqrt(var(Trle_LW$TL, na.rm = TRUE))# Standard deviation
+TrleNorm<-curve(dnorm(x, mean=TrleMean, sd=TrleStd), 
+                col="black", lwd=1, add=TRUE, yaxt="n")# Normal curve
+abline(v=67.5, col="black",lwd=1, lty=2)# Normal curve# Normal curve
+
+mtext(text="Size-frequency distribution (cm)",side=1,line=0,outer=TRUE,cex=0.8)
+mtext(text="Kernel density",side=2,line=0,outer=TRUE,cex=0.8)
+
+dev.off()
+
+
+
+
+#write.csv(LW_data, file="LW_data.csv")
+
+if(!require("summarytools")) install.packages("summarytools")# Pacote "summarytools"
+summarytools::descr(LW_data)
+view(dfSummary(LW_data))
+levels(Species)
+
+
+# Box_plots
+library("ggpubr")
+
+Box_TL_Sta<-ggboxplot(LW_data, x = "Species", y = "TL",
+                      palette = c("#00AFBB", "#E7B800"),orientation = "horizontal") + 
+        scale_y_continuous(labels = scales::number_format(accuracy = 0.1,
+                                                          decimal.mark = '.')) +
+        theme_bw() +
+        labs(x= "", y = "Total length (mm)", title = "",caption = "") +
+        theme(axis.text.x = element_text(angle = 360, hjust = 0.5)) +
+        theme(plot.title = element_text(size = 10, family = "Arial"),
+              text = element_text(size = 12, family = "Arial"),
+              axis.text.x=element_text(size = 12),
+              axis.text.y=element_text(size = 12,face="italic")) +
+        scale_x_discrete(limits = c("Trichiurus lepturus","Otolithes ruber","Mugil cephalus",
+                                    "Thryssa vitrirostris","Thryssa setirostris","Sardinella albella",
+                                    "Pellona ditchela","Johnius amblycephalus","Johnius dussumieri ",
+                                    "Hilsa kelee", "Oreochromis mossambicus","Pomadasys kaakan",
+                                    "Stolephorus indicus"))+
+        geom_jitter(size=2,color = "blue2", alpha=0.1,width = 0.35)+
+        scale_y_continuous(breaks=seq(0, 100, by = 5))
+
+Box_TL_Sta
+
+
+if(!require("ggpubr")) install.packages("ggpubr")
+Box_sp<-ggarrange(Box_TL_Sta, 
+                  common.legend = TRUE, legend="bottom",
+                  ncol = 1, nrow = 1)
+Box_sp
+
+ggsave("Box_sp.png",dpi=600)
+
+##################################################################################
+#           MINOR REVISION
+##################################################################################
+
+tiff("LW_Rel_TL_Dist_A.tiff", width = 6, height = 5.5,units = 'in',res=600)
+
+op<-par(no.readonly = TRUE)
+par(mfrow = c(4,4))
+par(cex = 0.6)
+par(mar = c(2.8,2.8,1.0,0.5))#outer margin: bottom, left, top and right side
+par(mgp = c(1.5,0.5,0))#axis title, axis labels and axis line default c(3,1,0) 
+par(oma = c(1.5,2.5,1.5,0))  
+layout.show(16) 
+
+Ormo_lm <- lm(Ormo_logL~Ormo_logW)
+fitPlot(Ormo_lm,xlab="",ylab="Log TW (g)",main="Oreochromis mossambicus",yaxt="n",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+
+fitPlot(Hike_lm,xlab="",yaxt="n",ylab="",main="Hilsa kelee",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+
+Saal_lm <- lm(Saal_logL~Saal_logW)
+fitPlot(Saal_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Sardinella albella",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,tck=-.025,cex.axis=1)
+
+Stin_lm <- lm(Stin_logL~Stin_logW)
+fitPlot(Stin_lm,xlab="",yaxt="n",ylab="",main="Stolephorus indicus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Thse_lm <- lm(Thse_logL~Thse_logW)
+fitPlot(Thse_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Thryssa setirostris",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Thvi_lm <- lm(Thvi_logL~Thvi_logW)
+fitPlot(Thvi_lm,xlab="",ylab="",yaxt="n",main="Thryssa vitrirostris",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Poka_lm <- lm(Poka_logL~Poka_logW)
+fitPlot(Poka_lm,xlab="Log TL (cm)",yaxt="n",ylab="Log TW (g)",main="Pomadasys kaakan",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Muce_lm <- lm(Muce_logL~Muce_logW)
+fitPlot(Muce_lm,xlab="Log TL (cm)",yaxt="n",ylab="",main="Mugil cephalus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Pedi_lm <- lm(Pedi_logL~Pedi_logW)
+fitPlot(Pedi_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Pellona ditchela",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2,seq(from = 0, to= 4, by=1),  tck=-.025,cex.axis=1)
+
+Joam_lm <- lm(Joam_logL~Joam_logW)
+fitPlot(Joam_lm,xlab="",yaxt="n",ylab="",main="Johnius amblycephalus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Jodu_lm <- lm(Jodu_logL~Jodu_logW)
+fitPlot(Jodu_lm,xlab="",yaxt="n",ylab="Log TW (g)",main="Johnius dussumieri",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+Otru_lm <- lm(Otru_logL~Otru_logW)
+fitPlot(Otru_lm,xlab="Log TL (cm)",ylab="",main="Otolithes ruber",font.main=3,cex.main=.85,lwd=1)
+
+Trle_lm <- lm(Trle_logL~Trle_logW)
+fitPlot(Trle_lm,xlab="Log TL (cm)",yaxt="n",ylab="Log TW (g)",main="Trichiurus lepturus",font.main=3,cex.main=.85,lwd=1)
+axis(2,las=2, tck=-.025,cex.axis=1)#,seq(from = -2, to= 2,by=0.2)
+
+
+
+######################################################################################################
+###################################   % of Individuals below and above L50   #########################
+if(!require("tidyverse")) install.packages("tidyverse")# Pacote "tidyverse"
+
+############
+#  N indiv. <= L50 = 1, e.g. Ormo_LW_1
+#  N indiv. > L50 = 1, e.g. Ormo_LW_2
+############
+
+#####################    Oreochromis mossambicus ######################
+
+# Subset
+Ormo_LW<-LW_data %>% filter(Species=="Oreochromis mossambicus")
+summary(Ormo_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Ormo_LW_1<-LW_data %>% filter(TL<=20, Species=="Oreochromis mossambicus")
+summary(Ormo_LW_1) #Juveniles
+Ormo_LW_2<-LW_data %>% filter(TL>20, Species=="Oreochromis mossambicus")
+summary(Ormo_LW_2) #Adults
+# N
+# juveniles + Adults
+Ormo_LW<-Ormo_LW %>% count(Species)
+Ormo_Tot<-as.numeric(Ormo_LW[,2])
+Ormo_Tot
+# juveniles
+Ormo_LW_Juv<-Ormo_LW_1 %>% count(Species)
+Ormo_Juv<-as.numeric(Ormo_LW_Juv[,2])
+Ormo_Juv
+# Adults
+Ormo_LW_Adu<-Ormo_LW_2 %>% count(Species)
+Ormo_Adu<-as.numeric(Ormo_LW_Adu[,2])
+Ormo_Adu
+# % Juv
+options(digits=3)
+Ormo_JuvPer<-Ormo_Juv*100/(Ormo_Tot)
+Ormo_JuvPer
+# % Adult
+options(digits=2)
+Ormo_AduPer<-100-Ormo_JuvPer
+Ormo_AduPer
+
+#####################    Hilsa kelee  ######################
+
+# Subset
+Hike_LW<-LW_data %>% filter(Species=="Hilsa kelee")
+summary(Hike_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Hike_LW_1<-LW_data %>% filter(TL<=13, Species=="Hilsa kelee")
+summary(Hike_LW_1) #Juveniles
+Hike_LW_2<-LW_data %>% filter(TL>13, Species=="Hilsa kelee")
+summary(Hike_LW_2) #Adults
+# N
+# juveniles + Adults
+Hike_LW<-Hike_LW %>% count(Species)
+Hike_Tot<-as.numeric(Hike_LW[,2])
+Hike_Tot
+# juveniles
+Hike_LW_Juv<-Hike_LW_1 %>% count(Species)
+Hike_Juv<-as.numeric(Hike_LW_Juv[,2])
+Hike_Juv
+# Adults
+Hike_LW_Adu<-Hike_LW_2 %>% count(Species)
+Hike_Adu<-as.numeric(Hike_LW_Adu[,2])
+Hike_Adu
+# % Juv
+options(digits=3)
+Hike_JuvPer<-Hike_Juv*100/(Hike_Tot)
+Hike_JuvPer
+# % Adult
+options(digits=2)
+Hike_AduPer<-100-Hike_JuvPer
+Hike_AduPer
+
+#####################    Sardinella albella   ######################
+
+Saal_LW<-LW_data %>% filter(Species=="Sardinella albella")
+summary(Saal_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Saal_LW_1<-LW_data %>% filter(TL<=10, Species=="Sardinella albella")
+summary(Saal_LW_1) #Juveniles
+Saal_LW_2<-LW_data %>% filter(TL>10, Species=="Sardinella albella")
+summary(Saal_LW_2) #Adults
+# N
+# juveniles + Adults
+Saal_LW<-Saal_LW %>% count(Species)
+Saal_Tot<-as.numeric(Saal_LW[,2])
+Saal_Tot
+# juveniles
+Saal_LW_Juv<-Saal_LW_1 %>% count(Species)
+Saal_Juv<-as.numeric(Saal_LW_Juv[,2])
+Saal_Juv
+# Adults
+Saal_LW_Adu<-Saal_LW_2 %>% count(Species)
+Saal_Adu<-as.numeric(Saal_LW_Adu[,2])
+Saal_Adu
+# % Juv
+options(digits=3)
+Saal_JuvPer<-Saal_Juv*100/(Saal_Tot)
+Saal_JuvPer
+# % Adult
+options(digits=2)
+Saal_AduPer<-100-Saal_JuvPer
+Saal_AduPer
+
+#####################    Stolephorus indicus    ######################
+
+Stin_LW<-LW_data %>% filter(Species=="Stolephorus indicus")
+summary(Stin_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Stin_LW_1<-LW_data %>% filter(TL<=8.5, Species=="Stolephorus indicus")
+summary(Stin_LW_1) #Juveniles
+Stin_LW_2<-LW_data %>% filter(TL>8.5, Species=="Stolephorus indicus")
+summary(Stin_LW_2) #Adults
+# N
+# juveniles + Adults
+Stin_LW<-Stin_LW %>% count(Species)
+Stin_Tot<-as.numeric(Stin_LW[,2])
+Stin_Tot
+# juveniles
+Stin_LW_Juv<-Stin_LW_1 %>% count(Species)
+Stin_Juv<-as.numeric(Stin_LW_Juv[,2])
+Stin_Juv
+# Adults
+Stin_LW_Adu<-Stin_LW_2 %>% count(Species)
+Stin_Adu<-as.numeric(Stin_LW_Adu[,2])
+Stin_Adu
+# % Juv
+options(digits=3)
+Stin_JuvPer<-Stin_Juv*100/(Stin_Tot)
+Stin_JuvPer
+# % Adult
+options(digits=2)
+Stin_AduPer<-100-Stin_JuvPer
+Stin_AduPer
+
+#####################    Thryssa setirostris     ######################
+
+Thse_LW<-LW_data %>% filter(Species=="Thryssa setirostris")
+summary(Thse_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Thse_LW_1<-LW_data %>% filter(TL<=11.8, Species=="Thryssa setirostris")
+summary(Thse_LW_1) #Juveniles
+Thse_LW_2<-LW_data %>% filter(TL>11.8, Species=="Thryssa setirostris")
+summary(Thse_LW_2) #Adults
+# N
+# juveniles + Adults
+Thse_LW<-Thse_LW %>% count(Species)
+Thse_Tot<-as.numeric(Thse_LW[,2])
+Thse_Tot
+# juveniles
+Thse_LW_Juv<-Thse_LW_1 %>% count(Species)
+Thse_Juv<-as.numeric(Thse_LW_Juv[,2])
+Thse_Juv
+# Adults
+Thse_LW_Adu<-Thse_LW_2 %>% count(Species)
+Thse_Adu<-as.numeric(Thse_LW_Adu[,2])
+Thse_Adu
+# % Juv
+options(digits=3)
+Thse_JuvPer<-Thse_Juv*100/(Thse_Tot)
+Thse_JuvPer
+# % Adult
+options(digits=3)
+Thse_AduPer<-100-Thse_JuvPer
+Thse_AduPer
+
+#####################    T. vitrirostris      ######################
+
+Thvi_LW<-LW_data %>% filter(Species=="Thryssa vitrirostris")
+summary(Thvi_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Thvi_LW_1<-LW_data %>% filter(TL<=13, Species=="Thryssa vitrirostris")
+summary(Thvi_LW_1) #Juveniles
+Thvi_LW_2<-LW_data %>% filter(TL>13, Species=="Thryssa vitrirostris")
+summary(Thvi_LW_2) #Adults
+# N
+# juveniles + Adults
+Thvi_LW<-Thvi_LW %>% count(Species)
+Thvi_Tot<-as.numeric(Thvi_LW[,2])
+Thvi_Tot
+# juveniles
+Thvi_LW_Juv<-Thvi_LW_1 %>% count(Species)
+Thvi_Juv<-as.numeric(Thvi_LW_Juv[,2])
+Thvi_Juv
+# Adults
+Thvi_LW_Adu<-Thvi_LW_2 %>% count(Species)
+Thvi_Adu<-as.numeric(Thvi_LW_Adu[,2])
+Thvi_Adu
+# % Juv
+options(digits=3)
+Thvi_JuvPer<-Thvi_Juv*100/(Thvi_Tot)
+Thvi_JuvPer
+# % Adult
+options(digits=3)
+Thvi_AduPer<-100-Thvi_JuvPer
+Thvi_AduPer
+
+#####################    Pomadasys kaakan       ######################
+
+Poka_LW<-LW_data %>% filter(Species=="Pomadasys kaakan")
+summary(Poka_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Poka_LW_1<-LW_data %>% filter(TL<=48, Species=="Pomadasys kaakan")
+summary(Poka_LW_1) #Juveniles
+Poka_LW_2<-LW_data %>% filter(TL>48, Species=="Pomadasys kaakan")
+summary(Poka_LW_2) #Adults
+# N
+# juveniles + Adults
+Poka_LW<-Poka_LW %>% count(Species)
+Poka_Tot<-as.numeric(Poka_LW[,2])
+Poka_Tot
+# juveniles
+Poka_LW_Juv<-Poka_LW_1 %>% count(Species)
+Poka_Juv<-as.numeric(Poka_LW_Juv[,2])
+Poka_Juv
+# Adults
+Poka_LW_Adu<-Poka_LW_2 %>% count(Species)
+Poka_Adu<-as.numeric(Poka_LW_Adu[,2])
+Poka_Adu
+# % Juv
+options(digits=3)
+Poka_JuvPer<-Poka_Juv*100/(Poka_Tot)
+Poka_JuvPer
+# % Adult
+options(digits=3)
+Poka_AduPer<-100-Poka_JuvPer
+Poka_AduPer
+
+#####################    Mugil cephalus       ######################
+
+Muce_LW<-LW_data %>% filter(Species=="Mugil cephalus")
+summary(Muce_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Muce_LW_1<-LW_data %>% filter(TL<=35, Species=="Mugil cephalus")
+summary(Muce_LW_1) #Juveniles
+Muce_LW_2<-LW_data %>% filter(TL>35, Species=="Mugil cephalus")
+summary(Muce_LW_2) #Adults
+# N
+# juveniles + Adults
+Muce_LW<-Muce_LW %>% count(Species)
+Muce_Tot<-as.numeric(Muce_LW[,2])
+Muce_Tot
+# juveniles
+Muce_LW_Juv<-Muce_LW_1 %>% count(Species)
+Muce_Juv<-as.numeric(Muce_LW_Juv[,2])
+Muce_Juv
+# Adults
+Muce_LW_Adu<-Muce_LW_2 %>% count(Species)
+Muce_Adu<-as.numeric(Muce_LW_Adu[,2])
+Muce_Adu
+# % Juv
+options(digits=3)
+Muce_JuvPer<-Muce_Juv*100/(Muce_Tot)
+Muce_JuvPer
+# % Adult
+options(digits=3)
+Muce_AduPer<-100-Muce_JuvPer
+Muce_AduPer
+
+#####################    Pellona ditchela        ######################
+
+Pedi_LW<-LW_data %>% filter(Species=="Pellona ditchela")
+summary(Pedi_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Pedi_LW_1<-LW_data %>% filter(TL<=14, Species=="Pellona ditchela")
+summary(Pedi_LW_1) #Juveniles
+Pedi_LW_2<-LW_data %>% filter(TL>14, Species=="Pellona ditchela")
+summary(Pedi_LW_2) #Adults
+# N
+# juveniles + Adults
+Pedi_LW<-Pedi_LW %>% count(Species)
+Pedi_Tot<-as.numeric(Pedi_LW[,2])
+Pedi_Tot
+# juveniles
+Pedi_LW_Juv<-Pedi_LW_1 %>% count(Species)
+Pedi_Juv<-as.numeric(Pedi_LW_Juv[,2])
+Pedi_Juv
+# Adults
+Pedi_LW_Adu<-Pedi_LW_2 %>% count(Species)
+Pedi_Adu<-as.numeric(Pedi_LW_Adu[,2])
+Pedi_Adu
+# % Juv
+options(digits=3)
+Pedi_JuvPer<-Pedi_Juv*100/(Pedi_Tot)
+Pedi_JuvPer
+# % Adult
+options(digits=3)
+Pedi_AduPer<-100-Pedi_JuvPer
+Pedi_AduPer
+
+#####################    Johnius amblycephalus    ######################
+
+Joam_LW<-LW_data %>% filter(Species=="Johnius amblycephalus")
+summary(Joam_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Joam_LW_1<-LW_data %>% filter(TL<=15.7, Species=="Johnius amblycephalus")
+summary(Joam_LW_1) #Juveniles
+Joam_LW_2<-LW_data %>% filter(TL>15.7, Species=="Johnius amblycephalus")
+summary(Joam_LW_2) #Adults
+# N
+# juveniles + Adults
+Joam_LW<-Joam_LW %>% count(Species)
+Joam_Tot<-as.numeric(Joam_LW[,2])
+Joam_Tot
+# juveniles
+Joam_LW_Juv<-Joam_LW_1 %>% count(Species)
+Joam_Juv<-as.numeric(Joam_LW_Juv[,2])
+Joam_Juv
+# Adults
+Joam_LW_Adu<-Joam_LW_2 %>% count(Species)
+Joam_Adu<-as.numeric(Joam_LW_Adu[,2])
+Joam_Adu
+# % Juv
+options(digits=3)
+Joam_JuvPer<-Joam_Juv*100/(Joam_Tot)
+Joam_JuvPer
+# % Adult
+options(digits=3)
+Joam_AduPer<-100-Joam_JuvPer
+Joam_AduPer
+
+#####################    Johnius dussumieri    ######################
+
+Jodu_LW<-LW_data %>% filter(Species=="Johnius dussumieri ")
+summary(Jodu_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Jodu_LW_1<-LW_data %>% filter(TL<=12, Species=="Johnius dussumieri ")
+summary(Jodu_LW_1) #Juveniles
+Jodu_LW_2<-LW_data %>% filter(TL>12, Species=="Johnius dussumieri ")
+summary(Jodu_LW_2) #Adults
+# N
+# juveniles + Adults
+Jodu_LW<-Jodu_LW %>% count(Species)
+Jodu_Tot<-as.numeric(Jodu_LW[,2])
+Jodu_Tot
+# juveniles
+Jodu_LW_Juv<-Jodu_LW_1 %>% count(Species)
+Jodu_Juv<-as.numeric(Jodu_LW_Juv[,2])
+Jodu_Juv
+# Adults
+Jodu_LW_Adu<-Jodu_LW_2 %>% count(Species)
+Jodu_Adu<-as.numeric(Jodu_LW_Adu[,2])
+Jodu_Adu
+# % Juv
+options(digits=3)
+Jodu_JuvPer<-Jodu_Juv*100/(Jodu_Tot)
+Jodu_JuvPer
+# % Adult
+options(digits=3)
+Jodu_AduPer<-100-Jodu_JuvPer
+Jodu_AduPer
+
+#####################    Otolithes ruber     ######################
+
+Otru_LW<-LW_data %>% filter(Species=="Otolithes ruber")
+summary(Otru_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Otru_LW_1<-LW_data %>% filter(TL<=28, Species=="Otolithes ruber")
+summary(Otru_LW_1) #Juveniles
+Otru_LW_2<-LW_data %>% filter(TL>28, Species=="Otolithes ruber")
+summary(Otru_LW_2) #Adults
+# N
+# juveniles + Adults
+Otru_LW<-Otru_LW %>% count(Species)
+Otru_Tot<-as.numeric(Otru_LW[,2])
+Otru_Tot
+# juveniles
+Otru_LW_Juv<-Otru_LW_1 %>% count(Species)
+Otru_Juv<-as.numeric(Otru_LW_Juv[,2])
+Otru_Juv
+# Adults
+Otru_LW_Adu<-Otru_LW_2 %>% count(Species)
+Otru_Adu<-as.numeric(Otru_LW_Adu[,2])
+Otru_Adu
+# % Juv
+options(digits=3)
+Otru_JuvPer<-Otru_Juv*100/(Otru_Tot)
+Otru_JuvPer
+# % Adult
+options(digits=3)
+Otru_AduPer<-100-Otru_JuvPer
+Otru_AduPer
+
+#####################    Trichiurus lepturus     ######################
+
+Trle_LW<-LW_data %>% filter(Species=="Trichiurus lepturus")
+summary(Trle_LW) #Total
+LW_data<- as_tibble(LW_data) 
+Trle_LW_1<-LW_data %>% filter(TL<=53, Species=="Trichiurus lepturus")
+summary(Trle_LW_1) #Juveniles
+Trle_LW_2<-LW_data %>% filter(TL>53, Species=="Trichiurus lepturus")
+summary(Trle_LW_2) #Adults
+# N
+# juveniles + Adults
+Trle_LW<-Trle_LW %>% count(Species)
+Trle_Tot<-as.numeric(Trle_LW[,2])
+Trle_Tot
+# juveniles
+Trle_LW_Juv<-Trle_LW_1 %>% count(Species)
+Trle_Juv<-as.numeric(Trle_LW_Juv[,2])
+Trle_Juv
+# Adults
+Trle_LW_Adu<-Trle_LW_2 %>% count(Species)
+Trle_Adu<-as.numeric(Trle_LW_Adu[,2])
+Trle_Adu
+# % Juv
+options(digits=3)
+Trle_JuvPer<-Trle_Juv*100/(Trle_Tot)
+Trle_JuvPer
+# % Adult
+options(digits=3)
+Trle_AduPer<-100-Trle_JuvPer
+Trle_AduPer
+
+######################################
+# % of juveniles and adults
+Ormo_JuvPer # Oreochromis mossambicus
+Ormo_AduPer
+Hike_JuvPer # Hilsa kelee
+Hike_AduPer
+Saal_JuvPer # Sardinella albella
+Saal_AduPer
+Stin_JuvPer # Stolephorus indicus
+Stin_AduPer
+Thse_JuvPer # Thryssa setirostris
+Thse_AduPer
+Thvi_JuvPer # Thryssa vitrirostris
+Thvi_AduPer
+Poka_JuvPer # Pomadasys kaakan
+Poka_AduPer
+Muce_JuvPer # Mugil cephalus
+Muce_AduPer 
+Pedi_JuvPer # Pellona ditchela
+Pedi_AduPer
+Joam_JuvPer # Johnius amblycephalus
+Joam_AduPer
+Jodu_JuvPer # Johnius dussumieri
+Jodu_AduPer
+Otru_JuvPer # Otolithes ruber
+Otru_AduPer
+Trle_JuvPer # Trichiurus lepturus
+Trle_AduPer
+
+Per_sp<-c("Oreochromis mossambicus","Hilsa kelee","Sardinella albella",
+                  "Stolephorus indicus","Thryssa setirostris","T. vitrirostris",
+                  "Pomadasys kaakan","Mugil cephalus","Pellona ditchela","Johnius amblycephalus",
+                  "Johnius dussumieri","Otolithes ruber","Trichiurus lepturus")
+Juv_sp<-c(98.4,96.6,68,99.3,68.4,86.6,100,100,93.2,98,77.9,97.3,94.7)
+
+Table_sp<-as.data.frame(Per_sp,Juv_sp)
+
+Table_sp
